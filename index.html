@@ -48,18 +48,15 @@
 
     // --- Load GLB model ---
     const loader = new GLTFLoader();
-    loader.load('model.glb',
-      gltf => {
-        scene.add(gltf.scene);
-        fitView(gltf.scene);
-        animate();
-      },
-      undefined,
-      e => {
-        console.error('GLB load error', e);
-        alert('Failed to load model.glb. Make sure it is in the same folder as index.html');
-      }
-    );
+    loader.load('model.glb', gltf => {
+    scene.add(gltf.scene);
+    fitView(gltf.scene);
+    animate();
+}, undefined, e => {
+    console.error('GLB load error', e);
+    alert('Failed to load model.glb. Make sure it is in the same folder as index.html');
+});
+
 
     // --- Fit camera to model ---
     function fitView(object) {
@@ -94,3 +91,4 @@
   </script>
 </body>
 </html>
+
