@@ -42,9 +42,10 @@ loader.load("model.glb", g => {
   fitView();
   render();
 }, undefined, e => {
-  console.error('GLB load error:', e);
-  alert('Error loading model. Check that model.glb is in the same folder as viewer.html');
+  console.error("GLB load error:", e);
+  alert("Error loading model. Make sure model.glb is in the same folder as index.html");
 });
+
 
   }
 
@@ -106,5 +107,6 @@ loader.load("model.glb", g => {
   </script>
 </body>
 </html>
+
 
 
