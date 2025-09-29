@@ -21,47 +21,42 @@
   <div id="info">Use mouse to orbit, zoom, and pan.</div>
 
   <script type="module">
-    // --- Import Three.js ES Modules from CDN ---
+    // Import ES modules from CDN — no bare "three"
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js';
     import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.155.0/examples/jsm/loaders/GLTFLoader.js';
     import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.155.0/examples/jsm/controls/OrbitControls.js';
 
-    // --- Scene ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf0f0f0);
 
-    // --- Camera ---
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
     camera.position.set(0, 2, 5);
 
-    // --- Renderer ---
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // --- Controls ---
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    // --- Lights ---
+    // Lights
     const dirLight = new THREE.DirectionalLight(0xffffff, 1);
     dirLight.position.set(10, 10, 10);
     scene.add(dirLight);
     scene.add(new THREE.AmbientLight(0x404040));
 
-    // --- Load GLB model ---
+    // Load GLB model
     const loader = new GLTFLoader();
-    loader.load('model.glb', gltf => {
+    loader.load('./model.glb', gltf => {
       scene.add(gltf.scene);
-      fitCameraToObject(gltf.scene);
+      fitCamera(gltf.scene);
       animate();
     }, undefined, e => {
       console.error('GLB load error', e);
-      alert('Failed to load model.glb. Make sure it is in the same folder as index.html');
+      alert('Failed to load model.glb. Make sure it is in the same folder as index.html.');
     });
 
-    // --- Fit camera to model ---
-    function fitCameraToObject(object) {
+    function fitCamera(object) {
       const box = new THREE.Box3().setFromObject(object);
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
@@ -77,14 +72,12 @@
       controls.update();
     }
 
-    // --- Animate ---
     function animate() {
       requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
     }
 
-    // --- Handle resize ---
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth/window.innerHeight;
       camera.updateProjectionMatrix();
