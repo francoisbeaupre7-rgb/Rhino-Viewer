@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Rhino Viewer</title>
+  <title>Rhino Viewer (ES Modules)</title>
   <style>
     body { margin: 0; overflow: hidden; }
     #errorBox {
@@ -28,10 +28,21 @@
 
   const errorBox = document.getElementById('errorBox');
 
+  function showError(msg) {
+    errorBox.innerText = msg;
+    errorBox.style.display = 'block';
+  }
+
   try {
-    // Scene, camera, renderer
+    // Scene
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    scene.background = new THREE.Color(0xf0f0f0);
+
+    // Camera
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 2, 5);
+
+    // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
@@ -39,7 +50,6 @@
     // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    camera.position.set(0, 2, 5);
 
     // Lights
     const dirLight = new THREE.DirectionalLight(0xffffff, 1);
@@ -47,7 +57,7 @@
     scene.add(dirLight);
     scene.add(new THREE.AmbientLight(0x404040));
 
-    // Load GLB
+    // Load GLB model
     const loader = new GLTFLoader();
     loader.load(
       './model.glb',
@@ -58,7 +68,7 @@
       undefined,
       (err) => {
         console.error(err);
-        showError('❌ Could not load model.glb — make sure it exists in the repo root.');
+        showError('❌ Could not load model.glb — ensure it exists in the repo root.');
       }
     );
 
@@ -69,22 +79,18 @@
       renderer.render(scene, camera);
     }
 
-    // Resize handling
+    // Handle window resize
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    function showError(msg) {
-      errorBox.innerText = msg;
-      errorBox.style.display = 'block';
-    }
-
-  } catch(err) {
-    showError('Viewer initialization error: ' + err.message);
+  } catch (err) {
     console.error(err);
+    showError('❌ Viewer initialization error: ' + err.message);
   }
 </script>
+
 </body>
 </html>
