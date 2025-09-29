@@ -41,8 +41,12 @@
     p.innerText = 'No model param provided. Use ?model=...';
     document.body.appendChild(p);
   } else {
-    loader.load(decodeURIComponent(modelUrl), g=>{ gltfScene = g.scene; scene.add(gltfScene); fitView(); render(); }, 
-      undefined, e=>{ console.error('GLB load err',e); alert('Error loading model (check URL / CORS / auth)'); });
+    loader.load("model.glb", g => {
+  gltfScene = g.scene;
+  scene.add(gltfScene);
+  fitView();
+  render();
+});
   }
 
   function fitView(){
@@ -103,3 +107,4 @@
   </script>
 </body>
 </html>
+
