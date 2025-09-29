@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Rhino Viewer (ES Modules)</title>
+  <title>Rhino Viewer — Legacy Global</title>
   <style>
     body { margin: 0; overflow: hidden; }
     #errorBox {
@@ -21,11 +21,12 @@
 <body>
 <div id="errorBox"></div>
 
-<script type="module">
-  import * as THREE from 'https://unpkg.com/three@0.150.1/build/three.module.js';
-  import { GLTFLoader } from 'https://unpkg.com/three@0.150.1/examples/jsm/loaders/GLTFLoader.js';
-  import { OrbitControls } from 'https://unpkg.com/three@0.150.1/examples/jsm/controls/OrbitControls.js';
+<!-- Legacy global scripts (r146, everything attaches to THREE) -->
+<script src="https://unpkg.com/three@0.146.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.146.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://unpkg.com/three@0.146.0/examples/js/controls/OrbitControls.js"></script>
 
+<script>
   const errorBox = document.getElementById('errorBox');
 
   function showError(msg) {
@@ -48,7 +49,7 @@
     document.body.appendChild(renderer.domElement);
 
     // Controls
-    const controls = new OrbitControls(camera, renderer.domElement);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
     // Lights
@@ -57,18 +58,18 @@
     scene.add(dirLight);
     scene.add(new THREE.AmbientLight(0x404040));
 
-    // Load GLB model
-    const loader = new GLTFLoader();
+    // Load GLB
+    const loader = new THREE.GLTFLoader();
     loader.load(
       './model.glb',
-      (gltf) => {
+      function(gltf) {
         scene.add(gltf.scene);
         animate();
       },
       undefined,
-      (err) => {
+      function(err) {
         console.error(err);
-        showError('❌ Could not load model.glb — ensure it exists in the repo root.');
+        showError('❌ Could not load model.glb — ensure it exists in repo root.');
       }
     );
 
@@ -79,14 +80,14 @@
       renderer.render(scene, camera);
     }
 
-    // Handle window resize
-    window.addEventListener('resize', () => {
+    // Resize handling
+    window.addEventListener('resize', function() {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-  } catch (err) {
+  } catch(err) {
     console.error(err);
     showError('❌ Viewer initialization error: ' + err.message);
   }
