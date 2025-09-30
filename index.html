@@ -72,40 +72,26 @@ async function init() {
 
   console.log("Object count:", doc.objects().count);
 
-  // Loop through objects
   for (let i=0;i<doc.objects().count;i++){
     const obj = doc.objects().get(i);
     const geom = obj.geometry();
     const attrs = obj.attributes();
 
-    let meshes = [];
-
-    // Tessellate surfaces or Breps
-    if (geom instanceof rhino.Surface || geom instanceof rhino.Brep) {
-      const tessMeshes = rhino.Mesh.createFromBrep(geom, rhino.MeshParameters.default);
-      if(tessMeshes) meshes.push(...tessMeshes);
-    } else if (geom instanceof rhino.Mesh) {
-      meshes.push(geom);
+    let brep = null;
+    if (geom instanceof rhino.Mesh) {
+      // Mesh is fine
+      brep = null;
+      addMeshToScene(geom, attrs, doc);
+    } else if (geom instanceof rhino.Surface) {
+      brep = geom.toBrep();
+      if (brep) addBrepToScene(brep, attrs, doc);
+    } else if (geom instanceof rhino.Brep) {
+      brep = geom;
+      addBrepToScene(brep, attrs, doc);
     }
-
-    meshes.forEach(m => {
-      const threeMesh = meshToThree(m);
-
-      // Attach original metadata
-      let meta = {
-        name: attrs.name(),
-        layer: doc.layers().get(attrs.layerIndex()).name,
-        userStrings: {}
-      };
-      const us = attrs.userStrings();
-      if(us) for(const [k,v] of us) meta.userStrings[k] = v;
-
-      threeMesh.userData = meta;
-      scene.add(threeMesh);
-    });
   }
 
-  // Center camera on geometry
+  // Center camera
   const box = new THREE.Box3().setFromObject(scene);
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3()).length();
@@ -113,6 +99,33 @@ async function init() {
   camera.lookAt(center);
   controls.target.copy(center);
   controls.update();
+}
+
+function addMeshToScene(rhinoMesh, attrs, doc) {
+  const threeMesh = meshToThree(rhinoMesh);
+  threeMesh.userData = extractMetadata(attrs, doc);
+  scene.add(threeMesh);
+}
+
+function addBrepToScene(brep, attrs, doc) {
+  const meshes = rhino.Mesh.createFromBrep(brep, rhino.MeshParameters.default);
+  if (!meshes) return;
+  meshes.forEach(m => {
+    const threeMesh = meshToThree(m);
+    threeMesh.userData = extractMetadata(attrs, doc);
+    scene.add(threeMesh);
+  });
+}
+
+function extractMetadata(attrs, doc) {
+  let meta = {
+    name: attrs.name(),
+    layer: doc.layers().get(attrs.layerIndex()).name,
+    userStrings: {}
+  };
+  const us = attrs.userStrings();
+  if(us) for(const [k,v] of us) meta.userStrings[k] = v;
+  return meta;
 }
 
 function meshToThree(rhinoMesh){
