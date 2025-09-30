@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Rhino Surface Viewer — Metadata Click</title>
+  <title>Rhino Mesh Viewer — Metadata Click</title>
   <style>
     body { margin: 0; overflow: hidden; background: #f5f5f5; }
     canvas { display: block; }
@@ -22,7 +22,7 @@
   </style>
 </head>
 <body>
-<div id="infoBox">Click on a surface to see metadata...</div>
+<div id="infoBox">Click on a mesh to see metadata...</div>
 
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
 <script src="https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js"></script>
@@ -64,34 +64,25 @@ async function init() {
   window.addEventListener('click', onClick, false);
   window.addEventListener('resize', onWindowResize, false);
 
-  // Load Rhino 3DM
-  const url = 'model.3dm'; // replace with your file path
+  // Load Mesh-based 3DM
+  const url = 'model.3dm'; // replace with your mesh .3dm
   const request = await fetch(url);
   const buffer = await request.arrayBuffer();
   const doc = rhino.File3dm.fromByteArray(new Uint8Array(buffer));
-
-  console.log("Object count:", doc.objects().count);
 
   for (let i=0;i<doc.objects().count;i++){
     const obj = doc.objects().get(i);
     const geom = obj.geometry();
     const attrs = obj.attributes();
 
-    let brep = null;
     if (geom instanceof rhino.Mesh) {
-      // Mesh is fine
-      brep = null;
-      addMeshToScene(geom, attrs, doc);
-    } else if (geom instanceof rhino.Surface) {
-      brep = geom.toBrep();
-      if (brep) addBrepToScene(brep, attrs, doc);
-    } else if (geom instanceof rhino.Brep) {
-      brep = geom;
-      addBrepToScene(brep, attrs, doc);
+      const threeMesh = meshToThree(geom);
+      threeMesh.userData = extractMetadata(attrs, doc);
+      scene.add(threeMesh);
     }
   }
 
-  // Center camera
+  // Center camera on model
   const box = new THREE.Box3().setFromObject(scene);
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3()).length();
@@ -99,33 +90,6 @@ async function init() {
   camera.lookAt(center);
   controls.target.copy(center);
   controls.update();
-}
-
-function addMeshToScene(rhinoMesh, attrs, doc) {
-  const threeMesh = meshToThree(rhinoMesh);
-  threeMesh.userData = extractMetadata(attrs, doc);
-  scene.add(threeMesh);
-}
-
-function addBrepToScene(brep, attrs, doc) {
-  const meshes = rhino.Mesh.createFromBrep(brep, rhino.MeshParameters.default);
-  if (!meshes) return;
-  meshes.forEach(m => {
-    const threeMesh = meshToThree(m);
-    threeMesh.userData = extractMetadata(attrs, doc);
-    scene.add(threeMesh);
-  });
-}
-
-function extractMetadata(attrs, doc) {
-  let meta = {
-    name: attrs.name(),
-    layer: doc.layers().get(attrs.layerIndex()).name,
-    userStrings: {}
-  };
-  const us = attrs.userStrings();
-  if(us) for(const [k,v] of us) meta.userStrings[k] = v;
-  return meta;
 }
 
 function meshToThree(rhinoMesh){
@@ -149,6 +113,17 @@ function meshToThree(rhinoMesh){
   geometry.computeVertexNormals();
 
   return new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:0xcccccc, metalness:0, roughness:1}));
+}
+
+function extractMetadata(attrs, doc){
+  let meta = {
+    name: attrs.name(),
+    layer: doc.layers().get(attrs.layerIndex()).name,
+    userStrings: {}
+  };
+  const us = attrs.userStrings();
+  if(us) for(const [k,v] of us) meta.userStrings[k] = v;
+  return meta;
 }
 
 function onClick(event){
