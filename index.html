@@ -32,6 +32,7 @@
 <script>
 let scene, camera, renderer, controls, raycaster, mouse, rhino;
 let lastSelected = null;
+const meshEdges = []; // store edges separately
 
 async function init() {
   rhino = await rhino3dm();
@@ -78,9 +79,9 @@ async function init() {
     const attrs = obj.attributes();
 
     if (geom instanceof rhino.Mesh) {
-      const threeMesh = meshToThree(geom);
-      threeMesh.userData = extractMetadata(attrs, doc);
-      scene.add(threeMesh);
+      const mesh = meshToThree(geom);
+      mesh.userData = extractMetadata(attrs, doc);
+      scene.add(mesh);
     }
   }
 
@@ -119,14 +120,16 @@ function meshToThree(rhinoMesh){
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
 
-  // Mesh material
   const material = new THREE.MeshStandardMaterial({color:0xcccccc, metalness:0, roughness:1});
   const mesh = new THREE.Mesh(geometry, material);
 
-  // Add black outline
+  // Black outline as separate line
   const edges = new THREE.EdgesGeometry(geometry);
   const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color:0x000000}));
-  mesh.add(line);
+  line.position.copy(mesh.position);
+  line.rotation.copy(mesh.rotation);
+  scene.add(line);
+  meshEdges.push({mesh, line}); // store reference for updating if needed
 
   return mesh;
 }
