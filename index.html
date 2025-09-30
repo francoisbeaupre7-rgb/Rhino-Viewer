@@ -121,14 +121,17 @@ function meshToThree(rhinoMesh){
   );
 }
 
+// Fixed metadata extraction
 function extractMetadata(attrs, doc){
   let meta = {
-    name: attrs.name(),
-    layer: doc.layers().get(attrs.layerIndex()).name,
+    name: attrs.name || "",
+    layer: doc.layers().get(attrs.layerIndex || 0).name,
     userStrings: {}
   };
-  const us = attrs.userStrings();
+
+  const us = attrs.getUserStrings ? attrs.getUserStrings() : null;
   if(us) for(const [k,v] of us) meta.userStrings[k] = v;
+
   return meta;
 }
 
