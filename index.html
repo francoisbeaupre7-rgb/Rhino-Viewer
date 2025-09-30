@@ -119,10 +119,16 @@ function meshToThree(rhinoMesh){
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
 
-  return new THREE.Mesh(
-    geometry,
-    new THREE.MeshStandardMaterial({color:0xcccccc, metalness:0, roughness:1})
-  );
+  // Mesh material
+  const material = new THREE.MeshStandardMaterial({color:0xcccccc, metalness:0, roughness:1});
+  const mesh = new THREE.Mesh(geometry, material);
+
+  // Add black outline
+  const edges = new THREE.EdgesGeometry(geometry);
+  const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color:0x000000}));
+  mesh.add(line);
+
+  return mesh;
 }
 
 // Fixed metadata extraction
