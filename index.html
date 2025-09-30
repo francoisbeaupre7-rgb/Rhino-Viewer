@@ -24,9 +24,9 @@
 <body>
 <div id="infoBox">Click on a mesh to see metadata...</div>
 
-<!-- Three.js and controls -->
-<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+<!-- Three.js r150 + non-module OrbitControls -->
+<script src="https://unpkg.com/three@0.150.1/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.150.1/examples/js/controls/OrbitControls.js"></script>
 <script src="https://unpkg.com/rhino3dm/rhino3dm.js"></script>
 
 <script>
@@ -47,7 +47,7 @@ async function init() {
   renderer.setClearColor(0xf5f5f5, 1);
   document.body.appendChild(renderer.domElement);
 
-  // OrbitControls
+  // OrbitControls (non-module)
   controls = new THREE.OrbitControls(camera, renderer.domElement);
 
   // Lights
@@ -66,7 +66,7 @@ async function init() {
   window.addEventListener('resize', onWindowResize, false);
 
   // Load mesh .3dm
-  const url = 'model.3dm'; // replace with your mesh .3dm file
+  const url = 'model.3dm'; // replace with your mesh .3dm
   const request = await fetch(url);
   const buffer = await request.arrayBuffer();
   const doc = rhino.File3dm.fromByteArray(new Uint8Array(buffer));
