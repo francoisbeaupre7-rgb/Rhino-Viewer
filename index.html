@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Rhino Mesh Viewer — Metadata Click</title>
+  <title>Rhino Mesh Viewer — Metadata</title>
   <style>
     body { margin: 0; overflow: hidden; background: #f5f5f5; }
     canvas { display: block; }
@@ -24,28 +24,31 @@
 <body>
 <div id="infoBox">Click on a mesh to see metadata...</div>
 
+<!-- Three.js and controls -->
 <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-<script src="https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js"></script>
+<script src="https://unpkg.com/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://unpkg.com/rhino3dm/rhino3dm.js"></script>
 
 <script>
-let scene, camera, renderer, raycaster, mouse, controls, rhino;
-
-init();
-animate();
+let scene, camera, renderer, controls, raycaster, mouse, rhino;
 
 async function init() {
   rhino = await rhino3dm();
 
   scene = new THREE.Scene();
 
+  // Camera
   camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
   camera.position.set(20,20,20);
 
+  // Renderer
   renderer = new THREE.WebGLRenderer({antialias:true});
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0xf5f5f5, 1);
   document.body.appendChild(renderer.domElement);
+
+  // OrbitControls
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
 
   // Lights
   scene.add(new THREE.AmbientLight(0xffffff, 1.2));
@@ -56,21 +59,19 @@ async function init() {
   dir.position.set(50,50,50);
   scene.add(dir);
 
-  // Controls
-  controls = new THREE.OrbitControls(camera, renderer.domElement);
-
+  // Raycaster & mouse
   raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2();
   window.addEventListener('click', onClick, false);
   window.addEventListener('resize', onWindowResize, false);
 
-  // Load Mesh-based 3DM
-  const url = 'model.3dm'; // replace with your mesh .3dm
+  // Load mesh .3dm
+  const url = 'model.3dm'; // replace with your mesh .3dm file
   const request = await fetch(url);
   const buffer = await request.arrayBuffer();
   const doc = rhino.File3dm.fromByteArray(new Uint8Array(buffer));
 
-  for (let i=0;i<doc.objects().count;i++){
+  for (let i=0; i<doc.objects().count; i++){
     const obj = doc.objects().get(i);
     const geom = obj.geometry();
     const attrs = obj.attributes();
@@ -82,7 +83,7 @@ async function init() {
     }
   }
 
-  // Center camera on model
+  // Center camera
   const box = new THREE.Box3().setFromObject(scene);
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3()).length();
@@ -90,21 +91,23 @@ async function init() {
   camera.lookAt(center);
   controls.target.copy(center);
   controls.update();
+
+  animate(); // start rendering
 }
 
 function meshToThree(rhinoMesh){
   const geometry = new THREE.BufferGeometry();
   const verts = [];
   const vertices = rhinoMesh.vertices();
-  for(let i=0;i<vertices.count;i++){
+  for(let i=0; i<vertices.count; i++){
     const pt = vertices.get(i);
-    verts.push(pt[0],pt[1],pt[2]);
+    verts.push(pt[0], pt[1], pt[2]);
   }
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
 
   const indices = [];
   const faces = rhinoMesh.faces();
-  for(let i=0;i<faces.count;i++){
+  for(let i=0; i<faces.count; i++){
     const f = faces.get(i);
     if(f.length===4){ indices.push(f[0],f[1],f[2]); indices.push(f[0],f[2],f[3]); }
     else if(f.length===3){ indices.push(f[0],f[1],f[2]); }
@@ -112,7 +115,10 @@ function meshToThree(rhinoMesh){
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
 
-  return new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:0xcccccc, metalness:0, roughness:1}));
+  return new THREE.Mesh(
+    geometry,
+    new THREE.MeshStandardMaterial({color:0xcccccc, metalness:0, roughness:1})
+  );
 }
 
 function extractMetadata(attrs, doc){
@@ -147,8 +153,11 @@ function onWindowResize(){
 
 function animate(){
   requestAnimationFrame(animate);
-  renderer.render(scene,camera);
+  renderer.render(scene, camera);
 }
+
+// Initialize
+init();
 </script>
 </body>
 </html>
