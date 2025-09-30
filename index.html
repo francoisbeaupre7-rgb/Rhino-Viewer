@@ -7,11 +7,9 @@
     body {
       margin: 0;
       overflow: hidden;
-      background-color: #f5f5f5; /* light background */
+      background-color: #f5f5f5;
     }
-    canvas {
-      display: block;
-    }
+    canvas { display: block; }
     #infoBox {
       position: fixed;
       bottom: 10px;
@@ -30,10 +28,8 @@
 <body>
   <div id="infoBox">Click on a surface to see metadata...</div>
 
-  <!-- Three.js + Rhino3dm -->
   <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
   <script src="https://unpkg.com/rhino3dm/rhino3dm.js"></script>
-  <script src="https://unpkg.com/three/examples/jsm/loaders/3DMLoader.js"></script>
 
   <script>
     let scene, camera, renderer, raycaster, mouse, rhino;
@@ -47,13 +43,13 @@
       scene = new THREE.Scene();
 
       // Camera
-      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(20, 20, 20);
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+      camera.position.set(30, 30, 30);
 
       // Renderer
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setClearColor(0xf5f5f5, 1); // light background
+      renderer.setClearColor(0xf5f5f5, 1);
       document.body.appendChild(renderer.domElement);
 
       // Lights
@@ -61,84 +57,90 @@
       const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
       hemiLight.position.set(0, 200, 0);
       scene.add(hemiLight);
-
       const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
       dirLight.position.set(50, 50, 50);
       scene.add(dirLight);
 
-      // Raycaster for picking
+      // Raycaster
       raycaster = new THREE.Raycaster();
       mouse = new THREE.Vector2();
       window.addEventListener('click', onClick, false);
 
-      // Load Rhino 3DM model
-      const url = 'model.3dm'; // replace with your file
+      // Load model
+      const url = "model.3dm"; // put your 3dm file in the repo root
       const request = await fetch(url);
       const buffer = await request.arrayBuffer();
       const doc = rhino.File3dm.fromByteArray(new Uint8Array(buffer));
 
-      console.log("Model objects:", doc.objects().count);
+      console.log("Object count:", doc.objects().count);
 
       for (let i = 0; i < doc.objects().count; i++) {
         const obj = doc.objects().get(i);
         const geom = obj.geometry();
         const attrs = obj.attributes();
 
-        // Convert Rhino geometry → Three.js
-        const threeMesh = meshFromGeometry(geom);
-        if (threeMesh) {
-          // Extract metadata
+        let meshes = [];
+
+        if (geom instanceof rhino.Mesh) {
+          meshes.push(geom);
+        } else if (geom instanceof rhino.Brep) {
+          const brepMeshes = rhino.Mesh.createFromBrep(geom, null);
+          if (brepMeshes) meshes.push(...brepMeshes);
+        }
+
+        meshes.forEach(m => {
+          const threeMesh = meshToThree(m);
+
+          // collect metadata
           let meta = {
             name: attrs.name(),
             layer: doc.layers().get(attrs.layerIndex()).name,
             userStrings: {}
           };
-
           const us = attrs.userStrings();
           if (us) {
             for (let [key, value] of us) {
               meta.userStrings[key] = value;
             }
           }
-
           threeMesh.userData = meta;
+
           scene.add(threeMesh);
-        }
+        });
       }
 
       window.addEventListener('resize', onWindowResize, false);
     }
 
-    // Simple converter: meshes only (expandable for curves/surfaces if needed)
-    function meshFromGeometry(geom) {
-      if (geom instanceof rhino.Mesh) {
-        const threeGeom = new THREE.BufferGeometry();
-        const vertices = geom.vertices();
-        const faces = geom.faces();
+    function meshToThree(rhinoMesh) {
+      const geometry = new THREE.BufferGeometry();
 
-        const verts = [];
-        for (let i = 0; i < vertices.count; i++) {
-          const pt = vertices.get(i);
-          verts.push(pt[0], pt[1], pt[2]);
-        }
-        threeGeom.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-
-        const indices = [];
-        for (let i = 0; i < faces.count; i++) {
-          const f = faces.get(i);
-          if (f.length === 4) {
-            indices.push(f[0], f[1], f[2]);
-            indices.push(f[0], f[2], f[3]);
-          } else if (f.length === 3) {
-            indices.push(f[0], f[1], f[2]);
-          }
-        }
-        threeGeom.setIndex(indices);
-        threeGeom.computeVertexNormals();
-
-        return new THREE.Mesh(threeGeom, new THREE.MeshStandardMaterial({ color: 0xcccccc }));
+      const vertices = rhinoMesh.vertices();
+      const verts = [];
+      for (let i = 0; i < vertices.count; i++) {
+        const pt = vertices.get(i);
+        verts.push(pt[0], pt[1], pt[2]);
       }
-      return null;
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+
+      const faces = rhinoMesh.faces();
+      const indices = [];
+      for (let i = 0; i < faces.count; i++) {
+        const f = faces.get(i);
+        if (f.length === 4) {
+          indices.push(f[0], f[1], f[2]);
+          indices.push(f[0], f[2], f[3]);
+        } else if (f.length === 3) {
+          indices.push(f[0], f[1], f[2]);
+        }
+      }
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+
+      return new THREE.Mesh(
+        geometry,
+        new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0, roughness: 1 })
+      );
     }
 
     function onClick(event) {
