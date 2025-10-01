@@ -20,6 +20,19 @@
     }
     #filterBox select { margin: 3px 0; width: 200px; }
 
+    #qtyBox { margin-top: 6px; font-weight: bold; display: none; }
+
+    #clearBtn {
+      margin-top: 8px;
+      padding: 4px 8px;
+      font-size: 12px;
+      border: 1px solid #aaa;
+      border-radius: 4px;
+      background: #eee;
+      cursor: pointer;
+    }
+    #clearBtn:hover { background: #ddd; }
+
     #infoBox {
       position: fixed;
       bottom: 10px;
@@ -34,19 +47,6 @@
       white-space: pre-wrap;
       z-index: 5;
     }
-
-    #clearBtn {
-      display: none;
-      margin-top: 8px;
-      padding: 4px 8px;
-      font-size: 12px;
-      border: 1px solid #aaa;
-      border-radius: 4px;
-      background: #eee;
-      cursor: pointer;
-    }
-    #clearBtn:hover { background: #ddd; }
-    #qtyBox { margin-top: 6px; font-weight: bold; display: none; }
   </style>
 </head>
 <body>
@@ -56,12 +56,11 @@
     <label>Value:</label><br>
     <select id="valueSelect"></select><br>
     <div id="qtyBox">Qty: 0</div>
+    <button id="clearBtn">Clear Selection</button> <!-- always visible -->
   </div>
 
   <div id="infoBox">
     Click on a mesh to see metadata...
-    <br>
-    <button id="clearBtn">Clear Selection</button>
   </div>
 
   <!-- Three.js r146 + non-module OrbitControls -->
@@ -70,16 +69,15 @@
   <script src="https://unpkg.com/rhino3dm/rhino3dm.js"></script>
 
   <script>
-  // Colors
   const DEFAULT_COLOR = 0xcccccc;
-  const FILTER_COLOR  = 0xffa500; // orange for filtered matches
-  const SELECT_COLOR  = 0xff0000; // red for user selection
+  const FILTER_COLOR  = 0xffa500;
+  const SELECT_COLOR  = 0xff0000;
 
   let scene, camera, renderer, controls, raycaster, mouse, rhino;
-  const meshes = [];           // all mesh THREE.Mesh objects
-  const meshEdges = [];        // {mesh, line} pairs (edges)
+  const meshes = [];
+  const meshEdges = [];
   const allKeys = new Set();
-  let selectedObjects = [];    // clicked/toggled selections
+  let selectedObjects = [];
   let currentFilterKey = null;
   let currentFilterVal = null;
 
@@ -114,7 +112,7 @@
     document.getElementById('clearBtn').addEventListener('click', clearSelection);
 
     // Load .3dm
-    const url = 'model.3dm'; // <-- ensure model.3dm is next to this HTML
+    const url = 'model.3dm';
     const request = await fetch(url);
     const buffer = await request.arrayBuffer();
     const doc = rhino.File3dm.fromByteArray(new Uint8Array(buffer));
@@ -129,7 +127,6 @@
         mesh.userData = extractMetadata(attrs, doc);
         meshes.push(mesh);
 
-        // collect all user string keys if present
         const us = mesh.userData.userStrings || {};
         for (const k in us) allKeys.add(k);
 
@@ -137,10 +134,8 @@
       }
     }
 
-    // rotate scene to Z-up (same as your working code)
     scene.rotation.x = -Math.PI/2;
 
-    // center camera
     const box = new THREE.Box3().setFromObject(scene);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3()).length();
@@ -177,7 +172,6 @@
     const material = new THREE.MeshStandardMaterial({color: DEFAULT_COLOR, metalness:0, roughness:1});
     const mesh = new THREE.Mesh(geometry, material);
 
-    // edges
     const edges = new THREE.EdgesGeometry(geometry);
     const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color:0x000000}));
     line.position.copy(mesh.position);
@@ -195,16 +189,13 @@
       userStrings: {}
     };
     const us = attrs.getUserStrings ? attrs.getUserStrings() : null;
-    if (us) {
-      for (const [k,v] of us) meta.userStrings[k] = v;
-    }
+    if (us) for (const [k,v] of us) meta.userStrings[k] = v;
     return meta;
   }
 
-  // central function to set mesh colors based on filter + selection
   function updateMeshColors(){
     meshes.forEach(m => {
-      const isSelected = selectedObjects.indexOf(m) !== -1;
+      const isSelected = selectedObjects.includes(m);
       const matchesFilter = currentFilterKey && currentFilterVal &&
         (m.userData.userStrings && m.userData.userStrings[currentFilterKey] === currentFilterVal);
 
@@ -218,13 +209,10 @@
     });
   }
 
-  // Click: toggle selection of mesh. Selection overrides filter color.
   function onClick(event){
     mouse.x = (event.clientX/window.innerWidth)*2 - 1;
-    mouse.y = - (event.clientY/window.innerHeight)*2 + 1;
+    mouse.y = -(event.clientY/window.innerHeight)*2 + 1;
     raycaster.setFromCamera(mouse, camera);
-
-    // only test the meshes array (not edges)
     const intersects = raycaster.intersectObjects(meshes, true);
     if (intersects.length === 0) return;
 
@@ -232,43 +220,24 @@
     if (!obj.isMesh) return;
 
     const idx = selectedObjects.indexOf(obj);
-    if (idx === -1) {
-      // add selection
-      selectedObjects.push(obj);
-    } else {
-      // toggle off
-      selectedObjects.splice(idx, 1);
-    }
+    if (idx === -1) selectedObjects.push(obj);
+    else selectedObjects.splice(idx, 1);
 
     updateMeshColors();
     showMetadata();
   }
 
-  // show metadata in infoBox (for clicked selections). If none selected show default message.
   function showMetadata(){
     const box = document.getElementById('infoBox');
-    const btn = document.getElementById('clearBtn');
-
     if (selectedObjects.length === 0) {
-      box.firstChild.nodeValue = "Click on a mesh to see metadata..."; // keep first text
-      // but preserve the Clear button position — hide it
-      btn.style.display = "none";
-      // If you prefer to display filter status here, we could — currently filter qty is shown in qtyBox.
+      box.textContent = "Click on a mesh to see metadata...";
       return;
     }
-
     const info = { qty: selectedObjects.length, items: selectedObjects.map(o => o.userData) };
-    // replace content but keep the Clear button element in DOM
     box.textContent = JSON.stringify(info, null, 2);
-    // re-append clear button (so it's after the JSON)
-    box.appendChild(document.getElementById('clearBtn'));
-    btn.style.display = "inline-block";
   }
 
   function clearSelection(){
-    selectedObjects.forEach(o => {
-      // simply remove selection mark; updateMeshColors will restore proper color (filter/default)
-    });
     selectedObjects = [];
     updateMeshColors();
     showMetadata();
@@ -285,17 +254,15 @@
     renderer.render(scene, camera);
   }
 
-  // ---------- UI ----------
   function setupUI(){
     const keySelect = document.getElementById('keySelect');
     const valueSelect = document.getElementById('valueSelect');
     const qtyBox = document.getElementById('qtyBox');
 
-    // populate keys
     keySelect.innerHTML = "";
     if (allKeys.size === 0) {
       const opt = document.createElement('option');
-      opt.value = ""; opt.textContent = "(no userStrings found)";
+      opt.value = ""; opt.textContent = "(no userStrings)";
       keySelect.appendChild(opt);
       keySelect.disabled = true;
       valueSelect.disabled = true;
@@ -308,44 +275,31 @@
       keySelect.appendChild(opt);
     });
 
-    // when key changes: populate values (with placeholder)
     keySelect.addEventListener('change', () => {
       currentFilterKey = keySelect.value || null;
       currentFilterVal = null;
-
-      // build list of distinct values for this key
       const values = new Set();
       meshes.forEach(m => {
         if (m.userData.userStrings && m.userData.userStrings[currentFilterKey]) {
           values.add(m.userData.userStrings[currentFilterKey]);
         }
       });
-
       valueSelect.innerHTML = "";
-      // placeholder option
       const ph = document.createElement('option');
       ph.value = ""; ph.textContent = "-- select value --";
       valueSelect.appendChild(ph);
-
       values.forEach(v => {
         const opt = document.createElement('option');
         opt.value = v; opt.textContent = v;
         valueSelect.appendChild(opt);
       });
-
       qtyBox.style.display = "none";
-      currentFilterVal = null;
       updateMeshColors();
     });
 
-    // when a value is picked: highlight matches & show qty
     valueSelect.addEventListener('change', () => {
-      const key = keySelect.value;
-      const val = valueSelect.value;
-      currentFilterKey = key || null;
-      currentFilterVal = val || null;
-
-      // count matches
+      currentFilterKey = keySelect.value || null;
+      currentFilterVal = valueSelect.value || null;
       let count = 0;
       meshes.forEach(m => {
         if (currentFilterKey && currentFilterVal &&
@@ -353,28 +307,20 @@
           count++;
         }
       });
-
       if (currentFilterVal) {
         qtyBox.style.display = "block";
         qtyBox.textContent = "Qty: " + count;
       } else {
         qtyBox.style.display = "none";
       }
-
       updateMeshColors();
     });
 
-    // initialize first key selected (but value remains unselected)
     keySelect.selectedIndex = 0;
     keySelect.dispatchEvent(new Event('change'));
   }
 
-  // initialize viewer
-  init().catch(e => {
-    console.error(e);
-    alert("Error initializing viewer. See console for details.");
-  });
-
+  init();
   </script>
 </body>
 </html>
